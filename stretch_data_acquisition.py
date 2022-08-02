@@ -87,40 +87,25 @@ def isolate_sweeps(df):
   Outputs:
     df_isolated: dataframe with baseline subtracted currents and noisey/broke currents removed.'''
 
-  def onselect_function(min_value, max_value):
+  # def onselect_function(min_value, max_value):
 
-    '''Used to select a region of a sweep trace. This function is used for both isolating regions to determine baseline current
-    or to isolate where the max current is. used in the SpanSelector widget from matplotlib.'''
+  #   '''Used to select a region of a sweep trace. This function is used for both isolating regions to determine baseline current
+  #   or to isolate where the max current is. used in the SpanSelector widget from matplotlib.'''
 
-    minmax_list.append(min_value)
-    minmax_list.append(max_value)
-    return min_value, max_value
+  #   minmax_list.append(min_value)
+  #   minmax_list.append(max_value)
+  #   return min_value, max_value
 
   #isolate each sweep
   grouped = df.groupby('sweep')
   keep_list = []
   triage_list = []
   minmax_list = []
-  baseline_i_master_list = []
   for name, group in grouped:
     fig, ax = plt.subplots()
     ax.plot(group.ti, group.i, color = 'pink')
     plt.xlim(4000, 5400)
-
-    #spanselector specific details
-    span =SpanSelector(
-    ax,
-    onselect = onselect_function,
-    direction = 'horizontal',
-    useblit = True,
-    span_stays = False,
-    button = 1,
-    rectprops = dict(alpha = 0.3, facecolor = 'orange'))
     plt.show()
-    baseline_i = group.loc[group['ti'].between(minmax_list[0], minmax_list[1], inclusive = True)]
-    baseline_i = baseline_i['i'].mean() 
-
-    print(baseline_i)
 
     #go through each trace and determine if it should be kept using a gui
     message = 'Keep?'
@@ -128,30 +113,15 @@ def isolate_sweeps(df):
     output = ynbox(message, title)
     print(output)
     
-    #only keeps the sweep and baseline average if the overall trace looks good
+    #only keeps the sweep if the overall trace looks good
     if output:
       keep_list.append(name)
-      baseline_i_master_list.append(baseline_i)
     else:
       triage_list.append(name)
+
   #create a dataframe with only the sweeps that are useable
   df_isolated = df.loc[df['sweep'].isin(keep_list)]
 
-  #going through and baseline subtracting the currents
-  grouped = df_isolated.groupby('sweep')
-  baseline_sub_list = []
-  index = 0
-  for name, group in grouped:
-    i_list = group['i'].to_list()
-    for i in i_list:
-      #subtracting baseline average from every datapoint and adding to a list
-      baseline_sub =  i - baseline_i_master_list[index]
-      baseline_sub_list.append(baseline_sub)
-    index += 1
-
-  #replacing original i with baseline subtracted i
-  df_isolated['i'] = baseline_sub_list
-  print(df_isolated)
   return df_isolated
 
 def max_current_df(df_isolated):
@@ -232,7 +202,7 @@ def p50_curve(df_max_currents):
   plt.xlabel("Pressure (mmHg)")
   plt.ylabel("Open Channel %")
   plt.show()
-  #popt gives the p50 and slope (I believe) at the p50
+
   print(popt)
   return popt
   
@@ -268,7 +238,7 @@ def ssc_peak_ratio(df_isolated, df_max_currents):
 
 def t63(df_isolated, df_max_currents):
 
-  '''Determines the t63 (36% of initial value) for each pressure step. Should be 63% of original value but this was caught after analysis.
+  '''Determines the t63 (37% of initial value) for each pressure step)
   
   Inputs:
     df_isolated:dataframe with baseline subtracted currents and noisey/broke currents removed.
@@ -308,7 +278,7 @@ def t63(df_isolated, df_max_currents):
       if i < max_i:
         break
     #determining where the t63 values is
-    t63_value = max_i * 0.63
+    t63_value = max_i * 0.37
     #index is time (ms) after the peak
     t63_index = 0 
     past_peak_list = avg_i[peak_index:]
@@ -325,13 +295,13 @@ def t63(df_isolated, df_max_currents):
     #for plotting, need to add the peak index to get it to align with everyhing else
     plt.scatter(t63_index + peak_index + 5000, t63_value, s = 500)
     plt.axis('off')
-    plt.show()
+    # plt.show()
 
     #increase iteration by one to get to the next group/sweep
     iteration_index += 1
+
   #adds t63 values to the now master df_max_currents dataframe
   df_max_currents['t63'] = t63_master_list
-  print(df_max_currents['t63'].to_string(index = False))
 
 
 #################################################################################################################################
@@ -341,11 +311,10 @@ def t63(df_isolated, df_max_currents):
  #working Code below
 
 ##################################################################################################################
-df = load_dataframe('C:/Users/mjs164/Box Sync/Data/initial_frequency_screen/stretch/2022_04_18_n2a_stretch_100hz_OWG_maxamp/2022_04_18_n2a_stretch_con_25.asc')
+df = load_dataframe('Z:/All_Staff/Grandl Lab/Michael Sindoni/initial_frequency_screen/stretch/ascii_files/2022_07_20_n2a_stretch_5hz_OWG_maxamp/2022_07_20_n2a_stretch_con_44.asc')
 df_isolated = isolate_sweeps(df)
 df_max_currents = max_current_df(df_isolated)
 p50 = p50_curve(df_max_currents)
-ssc_ratio = ssc_peak_ratio(df_isolated, df_max_currents)
+ssc_ratio_added = ssc_peak_ratio(df_isolated, df_max_currents)
 t63_added = t63(df_isolated, df_max_currents)
-
 

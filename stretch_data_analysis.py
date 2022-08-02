@@ -9,127 +9,87 @@ from easygui import *
 from scipy.optimize import curve_fit
 from matplotlib.widgets import SpanSelector 
 from iteration_utilities import grouper
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr 
 
-with open('C:/Users/mjs164/Box Sync/Data/initial_frequency_screen/stretch/initial_freq_screen_p50.csv', 'r') as fhand:
+with open('Z:/All_Staff/Grandl Lab/Michael Sindoni/initial_frequency_screen/stretch/initial_freq_screen_complete.csv', 'r') as fhand:
     df = pd.read_csv(fhand)
-    # df['mmHg'] = df['mmHg'] + 5
-    # print(df)
+print(df)
 
-def max_current_box_plot(df):
+#input what conditions are being analyzed
+conditions = ['con', '1', '5', '10', '20', '50', '100', '200']
+
+
+##################################################################################################
+def max_current_box_plot(df, conditions): 
+    condition_list = conditions
+    conditions_dict = {}
+    
+    #generates items (key/value) in the conditions dictionary. The key is the condition and the value is an empty list
+    for i in range(len(condition_list)):
+        conditions_dict[condition_list[i]] = [] 
+
+    #go through each trial, get max current, and add to correct value list in dictionary
     grouped = df.groupby(['condition', 'day', 'trial'])
-    hz_10_max_current = []
-    hz_10_category = []
-    con_max_current = []
-    con_category = []
-    hz_20_max_current = []
-    hz_20_category = []
-    hz_50_max_current = []
-    hz_50_category = []
-    hz_100_max_current = []
-    hz_100_category = []
-    hz_200_max_current = []
-    hz_200_category = []
-
-
     for name, group in grouped:
-        if group['condition'].iat[0] == 'con':
-            con_max_current.append(float(group['current'].max()))
-            con_category.append('con')
-        if group['condition'].iat[0] == '10':
-            hz_10_max_current.append(float(group['current'].max()))
-            hz_10_category.append(10)
-        if group['condition'].iat[0] == '20':
-            hz_10_max_current.append(float(group['current'].max()))
-            hz_10_category.append(20)
-        if group['condition'].iat[0] == '50':
-            hz_10_max_current.append(float(group['current'].max()))
-            hz_10_category.append(50)
-        if group['condition'].iat[0] == '100':
-            hz_10_max_current.append(float(group['current'].max()))
-            hz_10_category.append(100)
-        if group['condition'].iat[0] == '200':
-            hz_20_max_current.append(float(group['current'].max()))
-            hz_20_category.append(200)
+        max_value = group['current'].max()
+        ind_condition = name[0] #gets the condition
+        conditions_dict[ind_condition].append(max_value) #appends list for that condition in the original dictionary
 
-    category = con_category + hz_10_category + hz_20_category + hz_50_category + hz_100_category + hz_200_category
-    max_current = con_max_current + hz_10_max_current + hz_20_max_current + hz_50_max_current + hz_100_max_current + hz_200_max_current
+    #converts dictionary into a dataframe and creates box/strip plot
+    df = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in conditions_dict.items() ])).melt().dropna()
 
-    df2 = pd.DataFrame({'category': category,
-                    'max_current' : max_current})
-
-    #getting n for each category
-    n_grouped = df2.groupby(['category'])
-    for name, group in n_grouped:
-        len_category = len(group)
-        print(name, ':', len_category)
-
-    my_pal = {'con': 'grey', 10: 'maroon', 20:'goldenrod', 50:'navy', 100:'olivedrab', 200:'blueviolet'}
-    sns.boxplot(data = df2, x = 'category', y = 'max_current', order=["con", 10, 20, 50, 100, 200],  palette=my_pal)
-    sns.stripplot(data = df2, x = 'category', y = 'max_current', color = 'black', order=["con", 10, 20, 50, 100, 200])
+    #creating palette for box plot color scheme. Will correct for number of conditions with 8 being the max (con-200Hz)
+    pal_colors = ['grey', '#464196', '#ffcfdc', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet']
+    pal_dict = {}
+    for i in range(len(condition_list)):
+        pal_dict[conditions[i]] = pal_colors[i]
+    sns.boxplot(data = df, x = 'variable', y = 'value', palette=pal_dict)
+    sns.stripplot(data = df, x = 'variable', y = 'value', color = 'black')
     plt.ylim(0, 70)
     plt.show()
 
-def p50_box_plot(df):
+def p50_box_plot(df, conditions):
+    condition_list = conditions
+    conditions_dict = {}
+
+    #generates items (key/value) in the conditions dictionary. The key is the condition and the value is an empty list
+    for i in range(len(condition_list)):
+        conditions_dict[condition_list[i]] = [] 
+
+    #go through each trial, get p50, and add to correct value list in dictionary
     grouped = df.groupby(['condition', 'day', 'trial'])
-
-    hz_10_p50 = []
-    hz_10_category = []
-    con_p50 = []
-    con_category = []
-    hz_20_p50 = []
-    hz_20_category = []
-    hz_50_p50 = []
-    hz_50_category = []
-    hz_100_p50 = []
-    hz_100_category = []
-    hz_200_p50 = []
-    hz_200_category = []
-
     for name, group in grouped:
-        if group['condition'].iat[0] == '10':
-            hz_10_p50.append(float(group['p50'].iat[0]))
-            hz_10_category.append(10)
-        if group['condition'].iat[0] == '20':
-            hz_20_p50.append(float(group['p50'].iat[0]))
-            hz_20_category.append(20)
-        if group['condition'].iat[0] == '50':
-            hz_50_p50.append(float(group['p50'].iat[0]))
-            hz_50_category.append(50)
-        if group['condition'].iat[0] == '100':
-            hz_100_p50.append(float(group['p50'].iat[0]))
-            hz_100_category.append(100)
-        if group['condition'].iat[0] == 'con':
-            con_p50.append(float(group['p50'].iat[0]))
-            con_category.append('con')
-        if group['condition'].iat[0] == 'con':
-            hz_200_p50.append(float(group['p50'].iat[0]))
-            hz_200_category.append(200)
+        p50_value = list(group['p50'])[0] #converts pandas core series to list and takes first element since they are all the same per group
+        ind_condition = name[0] #gets the condition
+        conditions_dict[ind_condition].append(p50_value) #appends list for that condition in the original dictionary
 
-    category = con_category + hz_10_category + hz_20_category + hz_50_category + hz_100_category + hz_200_category
-    p50 = con_p50 + hz_10_p50 + hz_20_p50 + hz_50_p50 + hz_100_p50 + hz_200_p50
+
+    #converts dictionary into a dataframe and creates box/strip plot
+    df2 = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in conditions_dict.items() ])).melt().dropna()
 
     #adding 5 mmHg to correct for not starting at 0mmHg
-    p50 = [i + 5 for i in p50]
+    df2['value'] = df2['value'] + 5
 
-    df2 = pd.DataFrame({'category': category,
-                    'P50' : p50})
+    #creating palette for box plot color scheme. Will correct for number of conditions with 8 being the max (con-200Hz)
+    pal_colors = ['grey', '#464196', '#ffcfdc', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet']
+    pal_dict = {}
+    for i in range(len(condition_list)):
+        pal_dict[conditions[i]] = pal_colors[i]
+    sns.boxplot(data = df2, x = 'variable', y = 'value', palette=pal_dict)
+    sns.stripplot(data = df2, x = 'variable', y = 'value', color = 'black')
+    plt.ylim(0, 40)
+    plt.show()
 
     #getting n for each category
-    n_grouped = df2.groupby(['category'])
+    n_grouped = df2.groupby(['variable'])
     for name, group in n_grouped:
         len_category = len(group)
         print(name, ':', len_category)
 
-    my_pal = {'con': 'grey', 10: 'maroon', 20:'goldenrod', 50:'navy', 100:'olivedrab', 200:'blueviolet'}
-    sns.boxplot(data = df2, x = 'category', y = 'P50', palette = my_pal,  order=["con", 10, 20, 50, 100, 200])
-    sns.stripplot(data = df2, x = 'category', y = 'P50', color = 'black', order=["con", 10, 20, 50, 100, 200])
-    plt.ylim(0, 50)
-    plt.show()
 
 def p50_current_cutoff_plot(df, cutoff_list):
-    for i in cutoff_list:
-        cutoff = i
+    for i in range(len(cutoff_list)):
+        cutoff = cutoff_list[i]
         #first making the raw p50 plots
         grouped = df.groupby(['condition', 'trial'])
         current_avg_list = []
@@ -190,62 +150,42 @@ def p50_current_cutoff_plot(df, cutoff_list):
 
 
         #third, making boxplots of p50 for each condition that had a max current greater than the cutoff
-        hz_10_p50 = []
-        hz_10_category = []
-        con_p50 = []
-        con_category = []
-        hz_20_p50 = []
-        hz_20_category = []
-        hz_50_p50 = []
-        hz_50_category = []
-        hz_100_p50 = []
-        hz_100_category = []
-        hz_200_p50 = []
-        hz_200_category = []
+        condition_list = conditions
+        conditions_dict = {}
 
+        #generates items (key/value) in the conditions dictionary. The key is the condition and the value is an empty list
+        for j in range(len(condition_list)):
+            conditions_dict[condition_list[j]] = [] 
+
+        #go through each trial, get p50, and add to correct value list in dictionary
+        grouped = df.groupby(['condition', 'day', 'trial'])
         for name, group in grouped:
+            p50_value = list(group['p50'])[0] #converts pandas core series to list and takes first element since they are all the same per group
             if group['current'].max() > cutoff:
-                if group['condition'].iat[0] == '10':
-                    hz_10_p50.append(float(group['p50'].iat[0]))
-                    hz_10_category.append(10)
-                if group['condition'].iat[0] == '20':
-                    hz_20_p50.append(float(group['p50'].iat[0]))
-                    hz_20_category.append(20)
-                if group['condition'].iat[0] == '50':
-                    hz_50_p50.append(float(group['p50'].iat[0]))
-                    hz_50_category.append(50)
-                if group['condition'].iat[0] == '100':
-                    hz_100_p50.append(float(group['p50'].iat[0]))
-                    hz_100_category.append(100)
-                if group['condition'].iat[0] == 'con':
-                    con_p50.append(float(group['p50'].iat[0]))
-                    con_category.append('con')
-                if group['condition'].iat[0] == 'con':
-                    hz_200_p50.append(float(group['p50'].iat[0]))
-                    hz_200_category.append(200)
-            else:
-                continue
+                ind_condition = name[0] #gets the condition
+                conditions_dict[ind_condition].append(p50_value) #appends list for that condition in the original dictionary
 
-        category = con_category + hz_10_category + hz_20_category + hz_50_category + hz_100_category + hz_200_category
-        p50 = con_p50 + hz_10_p50 + hz_20_p50 + hz_50_p50 + hz_100_p50 + hz_200_p50
-        
+        #converts dictionary into a dataframe and creates box/strip plot
+        df3 = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in conditions_dict.items() ])).melt().dropna()
+
         #adding 5 mmHg to correct for not starting at 0mmHg
-        p50 = [i + 5 for i in p50]
-        
-        df2 = pd.DataFrame({'category': category,
-                        'P50' : p50})
+        df3['value'] = df3['value'] + 5
 
-        #getting n for each group with cutoff max current applied
-        n_grouped = df2.groupby(['category'])
+        #creating palette for box plot color scheme. Will correct for number of conditions with 8 being the max (con-200Hz)
+        pal_colors = ['grey', '#464196', '#ffcfdc', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet']
+        pal_dict = {}
+        for i in range(len(condition_list)):
+            pal_dict[conditions[i]] = pal_colors[i]
+        sns.boxplot(data = df3, x = 'variable', y = 'value', palette=pal_dict)
+        sns.stripplot(data = df3, x = 'variable', y = 'value', color = 'black')
+        plt.ylim(0, 40)
+        plt.show()
+
+        #getting n for each category
+        n_grouped = df3.groupby(['variable'])
         for name, group in n_grouped:
             len_category = len(group)
             print(name, ':', len_category)
-
-        my_pal = {'con': 'grey', 10: 'maroon', 20:'goldenrod', 50:'navy', 100:'olivedrab', 200:'blueviolet'}
-        sns.boxplot(data = df2, x = 'category', y = 'P50', palette = my_pal,  order=["con", 10, 20, 50, 100, 200])
-        sns.stripplot(data = df2, x = 'category', y = 'P50', color = 'black', order=["con", 10, 20, 50, 100, 200])
-        plt.ylim(0, 50)
-        plt.show()
 
 def current_time_correlation(df):
     grouped = df.groupby(['condition', 'day', 'trial'])
@@ -496,58 +436,188 @@ def p50_time_correlation(df):
         plt.show()
 
 def pip_resistance(df):
+    condition_list = conditions
+    conditions_dict = {}
+
+    #generates items (key/value) in the conditions dictionary. The key is the condition and the value is an empty list
+    for i in range(len(condition_list)):
+        conditions_dict[condition_list[i]] = [] 
+
+    #go through each trial, get p50, and add to correct value list in dictionary
     grouped = df.groupby(['condition', 'day', 'trial'])
-    hz_10_pipr = []
-    hz_10_category = []
-    con_pipr = []
-    con_category = []
-    hz_20_pipr = []
-    hz_20_category = []
-    hz_50_pipr = []
-    hz_50_category = []
-    hz_100_pipr = []
-    hz_100_category = []
-    hz_200_pipr = []
-    hz_200_category = []
-
     for name, group in grouped:
-        if group['condition'].iat[0] == 'con':
-            con_pipr.append(float(group['pip_resistance'].max()))
-            con_category.append('con')
-        if group['condition'].iat[0] == '10':
-            hz_10_pipr.append(float(group['pip_resistance'].max()))
-            hz_10_category.append(10)
-        if group['condition'].iat[0] == '20':
-            hz_10_pipr.append(float(group['pip_resistance'].max()))
-            hz_10_category.append(20)
-        if group['condition'].iat[0] == '50':
-            hz_10_pipr.append(float(group['pip_resistance'].max()))
-            hz_10_category.append(50)
-        if group['condition'].iat[0] == '100':
-            hz_10_pipr.append(float(group['pip_resistance'].max()))
-            hz_10_category.append(100)
-        if group['condition'].iat[0] == '200':
-            hz_20_pipr.append(float(group['pip_resistance'].max()))
-            hz_20_category.append(200)
+        pip_r = list(group['pip_resistance'])[0] #converts pandas core series to list and takes first element since they are all the same per group
+        ind_condition = name[0] #gets the condition
+        conditions_dict[ind_condition].append(pip_r) #appends list for that condition in the original dictionary
 
-    category = con_category + hz_10_category + hz_20_category + hz_50_category + hz_100_category + hz_200_category
-    pipr = con_pipr + hz_10_pipr + hz_20_pipr + hz_50_pipr + hz_100_pipr + hz_200_pipr
 
-    df2 = pd.DataFrame({'category': category,
-                    'pip_r' : pipr})
-    my_pal = {'con': 'grey', 10: 'maroon', 20:'goldenrod', 50:'navy', 100:'olivedrab', 200:'blueviolet'}
-    sns.boxplot(data = df2, x = 'category', y = 'pip_r', order=["con", 10, 20, 50, 100, 200],  palette=my_pal)
-    sns.stripplot(data = df2, x = 'category', y = 'pip_r', color = 'black', order=["con", 10, 20, 50, 100, 200])
-    plt.ylim(0, 4)
-    plt.show()    
+    #converts dictionary into a dataframe and creates box/strip plot
+    df2 = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in conditions_dict.items() ])).melt().dropna()
+
+    #creating palette for box plot color scheme. Will correct for number of conditions with 8 being the max (con-200Hz)
+    pal_colors = ['grey', '#464196', '#ffcfdc', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet']
+    pal_dict = {}
+    for i in range(len(condition_list)):
+        pal_dict[conditions[i]] = pal_colors[i]
+    sns.boxplot(data = df2, x = 'variable', y = 'value', palette=pal_dict)
+    sns.stripplot(data = df2, x = 'variable', y = 'value', color = 'black')
+    plt.ylim(0,)
+    plt.show()
+
+    #getting n for each category
+    n_grouped = df2.groupby(['variable'])
+    for name, group in n_grouped:
+        len_category = len(group)
+        print(name, ':', len_category)
 
 #############################################################################################################
-max_current_plot = max_current_box_plot(df)
-p50_plot = p50_box_plot(df)
+max_current_plot = max_current_box_plot(df,conditions) #cleaned
+p50_plot = p50_box_plot(df, conditions) #cleaned
 current_time_plot = current_time_correlation(df)
 t63 = t63_plot(df)
 ssc_peak = ssc_peak_ratio_plot(df)
 p50_time_plot = p50_time_correlation(df)
-cutoff_plots = p50_current_cutoff_plot(df, (20, 30, 40))
-resistances = pip_resistance(df) 
+cutoff_plots = p50_current_cutoff_plot(df, (20, 30, 40)) #partially cleaned
+resistances = pip_resistance(df) #cleaned
 #############################################################################################################
+cutoff_list = [20, 30, 40]
+
+for i in range(len(cutoff_list)):
+    condition_list = conditions
+    conditions_dict = {}
+    
+    #generates items (key/value) in the conditions dictionary. The key is the condition and the value is an empty list
+    for j in range(len(condition_list)):
+        conditions_dict[condition_list[j]] = [] 
+
+    #go through each trial, get p50, and add to correct value list in dictionary
+    grouped = df.groupby(['condition', 'day', 'trial'])
+    for name, group in grouped:
+        p50_value = list(group['p50'])[0] #converts pandas core series to list and takes first element since they are all the same per group
+        cutoff = cutoff_list[i]
+        if group['current'].max() > cutoff:
+            ind_condition = name[0] #gets the condition
+            conditions_dict[ind_condition].append(p50_value) #appends list for that condition in the original dictionary
+
+    #converts dictionary into a dataframe and creates box/strip plot
+    df2 = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in conditions_dict.items() ])).melt().dropna()
+
+    #adding 5 mmHg to correct for not starting at 0mmHg
+    df2['value'] = df2['value'] + 5
+
+    #creating palette for box plot color scheme. Will correct for number of conditions with 8 being the max (con-200Hz)
+    pal_colors = ['grey', '#464196', '#ffcfdc', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet']
+    pal_dict = {}
+    for i in range(len(condition_list)):
+        pal_dict[conditions[i]] = pal_colors[i]
+    sns.boxplot(data = df2, x = 'variable', y = 'value', palette=pal_dict)
+    sns.stripplot(data = df2, x = 'variable', y = 'value', color = 'black')
+    plt.ylim(0, 40)
+    plt.show()
+
+    #getting n for each category
+    n_grouped = df2.groupby(['variable'])
+    for name, group in n_grouped:
+        len_category = len(group)
+        print(name, ':', len_category)
+
+
+###################################################################
+for i in range(len(cutoff_list)):
+    cutoff = cutoff_list[i]
+    #first making the raw p50 plots
+    grouped = df.groupby(['condition', 'trial'])
+    current_avg_list = []
+    mmHg_list = []
+    category_list = []
+    for name,group in grouped:
+        current_list = group['current'].tolist()
+        mmHg_list2 = group['mmHg'].tolist()
+        if max(current_list) > i:
+            for i in range(len(current_list)):
+                current_avg_list.append(current_list[i])
+                mmHg_list.append(mmHg_list2[i])
+                category_list.append(name[0])
+        else:
+            continue
+
+    #adding 5mmHg to each sweep to correct for misreading pressure protocol
+    mmHg_list = [x + 5 for x in mmHg_list]
+
+    df2 = pd.DataFrame({'category': category_list,
+                        'mmHg' : mmHg_list,
+                    'current_avg' : current_avg_list})
+
+    my_pal = ('grey', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet')
+    hue_order = ['con', '10', '20', '50', '100', '200']
+    sns.pointplot(data = df2, x = 'mmHg', y = 'current_avg', hue = 'category', hue_order = hue_order, palette = my_pal, ci = 'sd', estimator=np.mean,
+    scale = 0.7, errwidth = 1, capsize = 0.5, legend = False)
+    plt.show()
+
+    #second, making a normalized p50 curve
+    norm_i_avg_list = []
+    mmHg_list = []
+    category_list = []
+    for name,group in grouped:
+        current_list = group['norm_i'].tolist()
+        max_current_cutoff = group['current'].max()
+        mmHg_list2 = group['mmHg'].tolist()
+        if max_current_cutoff > cutoff:
+            for i in range(len(current_list)):
+                norm_i_avg_list.append(current_list[i])
+                mmHg_list.append(mmHg_list2[i])
+                category_list.append(name[0])
+            else:
+                continue
+            
+    #adding 5mmHg to each sweep to correct for misreading pressure protocol
+    mmHg_list = [x + 5 for x in mmHg_list]
+
+    df2 = pd.DataFrame({'category': category_list,
+                        'mmHg' : mmHg_list,
+                    'norm_i' : norm_i_avg_list})
+
+    my_pal = ('grey', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet')
+    hue_order = ['con', '10', '20', '50', '100', '200']
+    sns.pointplot(data = df2, x = 'mmHg', y = 'norm_i', hue = 'category', hue_order = hue_order, palette = my_pal, ci = 'sd', estimator=np.mean,
+    scale = 0.7, errwidth = 1, capsize = 0.5, legend = False)
+    plt.show()
+
+
+    #third, making boxplots of p50 for each condition that had a max current greater than the cutoff
+    condition_list = conditions
+    conditions_dict = {}
+
+    #generates items (key/value) in the conditions dictionary. The key is the condition and the value is an empty list
+    for j in range(len(condition_list)):
+        conditions_dict[condition_list[j]] = [] 
+
+    #go through each trial, get p50, and add to correct value list in dictionary
+    grouped = df.groupby(['condition', 'day', 'trial'])
+    for name, group in grouped:
+        p50_value = list(group['p50'])[0] #converts pandas core series to list and takes first element since they are all the same per group
+        if group['current'].max() > cutoff:
+            ind_condition = name[0] #gets the condition
+            conditions_dict[ind_condition].append(p50_value) #appends list for that condition in the original dictionary
+
+    #converts dictionary into a dataframe and creates box/strip plot
+    df3 = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in conditions_dict.items() ])).melt().dropna()
+
+    #adding 5 mmHg to correct for not starting at 0mmHg
+    df3['value'] = df3['value'] + 5
+
+    #creating palette for box plot color scheme. Will correct for number of conditions with 8 being the max (con-200Hz)
+    pal_colors = ['grey', '#464196', '#ffcfdc', 'maroon', 'goldenrod', 'navy', 'olivedrab', 'blueviolet']
+    pal_dict = {}
+    for i in range(len(condition_list)):
+        pal_dict[conditions[i]] = pal_colors[i]
+    sns.boxplot(data = df3, x = 'variable', y = 'value', palette=pal_dict)
+    sns.stripplot(data = df3, x = 'variable', y = 'value', color = 'black')
+    plt.ylim(0, 40)
+    plt.show()
+
+    #getting n for each category
+    n_grouped = df3.groupby(['variable'])
+    for name, group in n_grouped:
+        len_category = len(group)
+        print(name, ':', len_category)
